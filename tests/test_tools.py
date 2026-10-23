@@ -55,7 +55,7 @@ class TestToolResult:
     def test_result_immutable(self):
         """Test that result is immutable."""
         result = ToolResult(success=True, output="test")
-        with pytest.raises(Exception):  # Pydantic ValidationError
+        with pytest.raises((Exception, ValueError)):  # Pydantic ValidationError or other
             result.success = False
 
 

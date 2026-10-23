@@ -125,7 +125,7 @@ class AgentExecutor:
             iteration_count = 0
             combined_prompt = f"{agent.system_prompt}\n\nTask: {task}"
 
-            for iteration in range(max_iterations):
+            for _iteration in range(max_iterations):
                 iteration_count += 1
                 logger.debug(f"Iteration {iteration_count}/{max_iterations}")
 
@@ -155,9 +155,7 @@ class AgentExecutor:
                 )
 
             # Should not reach here in Phase 1, but included for completeness
-            raise RuntimeMaxIterationsError(
-                f"Maximum iterations ({max_iterations}) exceeded"
-            )
+            raise RuntimeMaxIterationsError(f"Maximum iterations ({max_iterations}) exceeded")
 
         except RuntimeMaxIterationsError:
             logger.error(f"Max iterations ({max_iterations}) exceeded")

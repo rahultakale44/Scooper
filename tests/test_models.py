@@ -114,7 +114,7 @@ class TestFakeModelProvider:
 
         assert response.content == "This is a fake response."
         assert response.finish_reason == "completed"
-        assert response.token_count == 4  # "This is a fake response." = 5 words
+        assert response.token_count == 5  # "This is a fake response." = 5 words
         assert response.metadata["provider"] == "fake"
         assert response.metadata["prompt_length"] == len("Test prompt")
 

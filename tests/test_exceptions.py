@@ -1,7 +1,5 @@
 """Test exception hierarchy."""
 
-import pytest
-
 from scooper.exceptions import (
     ConfigurationError,
     ModelProviderConnectionError,

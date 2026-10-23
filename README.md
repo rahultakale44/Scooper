@@ -3,7 +3,7 @@
 **An extensible, open-source Agentic AI framework for Python**
 
 [![CI](https://github.com/rahultakale44/Scooper/actions/workflows/ci.yml/badge.svg)](https://github.com/rahultakale44/Scooper/actions/workflows/ci.yml)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ## What is Scooper?
@@ -43,7 +43,7 @@ Scooper is currently in Phase 1 of development. The foundation is being establis
 
 ## Requirements
 
-- Python 3.11 or higher
+- Python 3.10 or higher
 - [uv](https://docs.astral.sh/uv/) (recommended) or pip
 
 ## Installation
@@ -77,10 +77,7 @@ from scooper.config import ScooperConfig
 from scooper.models import ModelProvider
 
 # Initialize configuration
-config = ScooperConfig(
-    log_level="INFO",
-    max_iterations=10
-)
+config = ScooperConfig(log_level="INFO", max_iterations=10)
 
 # More examples coming as the framework matures
 print(f"Scooper v{__version__}")
