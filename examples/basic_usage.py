@@ -73,7 +73,7 @@ async def main() -> None:
     print(f"\nOutput:\n{result.final_output}")
 
     if result.metadata:
-        print(f"\nMetadata:")
+        print("\nMetadata:")
         for key, value in result.metadata.items():
             print(f"  {key}: {value}")
 
