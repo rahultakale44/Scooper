@@ -47,7 +47,7 @@ async def main() -> None:
     agent_config = AgentConfig(
         name="example-agent",
         description="A simple example agent for demonstration",
-        model_config=model_config,
+        provider_config=model_config,
         system_prompt="You are a helpful AI assistant. Analyze tasks and provide clear responses.",
         max_iterations=5,
     )

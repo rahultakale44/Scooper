@@ -21,7 +21,7 @@ class TestAgentConfig:
 
         config = AgentConfig(
             name="test-agent",
-            model_config=model_config,
+            provider_config=model_config,
         )
 
         assert config.name == "test-agent"
@@ -40,7 +40,7 @@ class TestAgentConfig:
         config = AgentConfig(
             name="custom-agent",
             description="A custom test agent",
-            model_config=model_config,
+            provider_config=model_config,
             system_prompt="You are a specialized agent.",
             max_iterations=5,
         )
@@ -58,7 +58,7 @@ class TestAgentConfig:
             model_name="test-model",
         )
 
-        config = AgentConfig(name="test", model_config=model_config)
+        config = AgentConfig(name="test", provider_config=model_config)
 
         with pytest.raises(ValidationError):
             config.name = "new-name"
@@ -72,15 +72,15 @@ class TestAgentConfig:
         )
 
         # Valid values
-        AgentConfig(name="test", model_config=model_config, max_iterations=1)
-        AgentConfig(name="test", model_config=model_config, max_iterations=100)
+        AgentConfig(name="test", provider_config=model_config, max_iterations=1)
+        AgentConfig(name="test", provider_config=model_config, max_iterations=100)
 
         # Invalid values
         with pytest.raises(ValidationError):
-            AgentConfig(name="test", model_config=model_config, max_iterations=0)
+            AgentConfig(name="test", provider_config=model_config, max_iterations=0)
 
         with pytest.raises(ValidationError):
-            AgentConfig(name="test", model_config=model_config, max_iterations=101)
+            AgentConfig(name="test", provider_config=model_config, max_iterations=101)
 
 
 class TestAgent:
@@ -97,7 +97,7 @@ class TestAgent:
         agent_config = AgentConfig(
             name="test-agent",
             description="Test description",
-            model_config=model_config,
+            provider_config=model_config,
         )
 
         agent = Agent(config=agent_config)
@@ -117,7 +117,7 @@ class TestAgent:
         agent_config = AgentConfig(
             name="prop-agent",
             description="Property test",
-            model_config=model_config,
+            provider_config=model_config,
             system_prompt="Custom prompt",
         )
 
@@ -138,7 +138,7 @@ class TestAgent:
         agent_config = AgentConfig(
             name="repr-agent",
             description="Repr test",
-            model_config=model_config,
+            provider_config=model_config,
         )
 
         agent = Agent(config=agent_config)
@@ -216,7 +216,7 @@ class TestAgentExecutor:
 
         agent_config = AgentConfig(
             name="test-agent",
-            model_config=model_config,
+            provider_config=model_config,
         )
 
         agent = Agent(config=agent_config)
@@ -241,7 +241,7 @@ class TestAgentExecutor:
             model_name="test-model",
         )
 
-        agent_config = AgentConfig(name="test-agent", model_config=model_config)
+        agent_config = AgentConfig(name="test-agent", provider_config=model_config)
         agent = Agent(config=agent_config)
         executor = AgentExecutor(config=config, model_provider=provider)
 
@@ -265,7 +265,7 @@ class TestAgentExecutor:
 
         agent_config = AgentConfig(
             name="metadata-agent",
-            model_config=model_config,
+            provider_config=model_config,
         )
 
         agent = Agent(config=agent_config)
@@ -292,7 +292,7 @@ class TestAgentExecutor:
         # Agent with custom max_iterations
         agent_config = AgentConfig(
             name="test-agent",
-            model_config=model_config,
+            provider_config=model_config,
             max_iterations=5,
         )
 

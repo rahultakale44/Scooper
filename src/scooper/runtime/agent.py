@@ -15,7 +15,7 @@ class AgentConfig(BaseModel):
     Attributes:
         name: Unique identifier for the agent
         description: Human-readable description of the agent's purpose
-        model_config: Configuration for the model provider
+        provider_config: Configuration for the model provider
         system_prompt: System-level instructions for the agent
         max_iterations: Maximum execution iterations (overrides global config)
     """
@@ -29,9 +29,8 @@ class AgentConfig(BaseModel):
         description="Description of the agent's purpose and capabilities",
     )
 
-    model_config_data: ModelProviderConfig = Field(
+    provider_config: ModelProviderConfig = Field(
         description="Model provider configuration",
-        alias="model_config",
     )
 
     system_prompt: str = Field(
