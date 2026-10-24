@@ -79,9 +79,7 @@ class CalculatorTool(Tool):
         if tool_input.operation not in valid_ops:
             from scooper.exceptions import ToolValidationError
 
-            raise ToolValidationError(
-                f"Invalid operation. Must be one of: {', '.join(valid_ops)}"
-            )
+            raise ToolValidationError(f"Invalid operation. Must be one of: {', '.join(valid_ops)}")
         return True
 
     async def execute(self, tool_input: ToolInput) -> ToolResult:
@@ -256,9 +254,7 @@ async def example_multiple_tool_calls():
         ModelResponse(
             response_type="tool_calls",
             content=None,
-            tool_calls=[
-                ToolCall(id="call_1", name="search", arguments={"query": "ai"})
-            ],
+            tool_calls=[ToolCall(id="call_1", name="search", arguments={"query": "ai"})],
             finish_reason="tool_calls",
         ),
         # Step 2: Do a calculation
@@ -278,9 +274,7 @@ async def example_multiple_tool_calls():
         ModelResponse(
             response_type="tool_calls",
             content=None,
-            tool_calls=[
-                ToolCall(id="call_3", name="search", arguments={"query": "agents"})
-            ],
+            tool_calls=[ToolCall(id="call_3", name="search", arguments={"query": "agents"})],
             finish_reason="tool_calls",
         ),
         # Final: Provide complete answer
@@ -341,9 +335,7 @@ async def example_tool_errors():
         ModelResponse(
             response_type="tool_calls",
             content=None,
-            tool_calls=[
-                ToolCall(id="call_1", name="unknown_tool", arguments={})
-            ],
+            tool_calls=[ToolCall(id="call_1", name="unknown_tool", arguments={})],
             finish_reason="tool_calls",
         ),
         # Attempt calculation with invalid arguments
@@ -430,9 +422,7 @@ async def example_max_iterations():
         ModelResponse(
             response_type="tool_calls",
             content=None,
-            tool_calls=[
-                ToolCall(id=f"call_{i}", name="search", arguments={"query": "test"})
-            ],
+            tool_calls=[ToolCall(id=f"call_{i}", name="search", arguments={"query": "test"})],
             finish_reason="tool_calls",
         )
         for i in range(10)  # More than max_iterations

@@ -95,7 +95,7 @@ config = ScooperConfig(log_level="INFO", max_iterations=10)
 agent_config = AgentConfig(
     name="assistant",
     provider_config=ModelProviderConfig(...),
-    system_prompt="You are a helpful assistant."
+    system_prompt="You are a helpful assistant.",
 )
 
 # Create agent with tools
