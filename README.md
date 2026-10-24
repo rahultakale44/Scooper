@@ -80,11 +80,7 @@ from scooper import __version__
 from scooper.config import ScooperConfig
 
 # Create configuration
-config = ScooperConfig(
-    log_level="INFO",
-    max_iterations=10,
-    timeout_seconds=300
-)
+config = ScooperConfig(log_level="INFO", max_iterations=10, timeout_seconds=300)
 
 print(f"Scooper v{__version__} initialized")
 print(f"Max iterations: {config.max_iterations}")
