@@ -26,6 +26,7 @@ Scooper is currently in Phase 2 of development, implementing multi-step agent ex
 - Python package structure and development tooling
 - Core configuration and exception handling
 - Model provider interface contracts with tool-call support
+- **Ollama integration** with chat API and tool calling support
 - Tool system foundation with validation and execution
 - Tool registry with timeout support
 - Multi-step agent execution loop
@@ -35,7 +36,7 @@ Scooper is currently in Phase 2 of development, implementing multi-step agent ex
 
 ### Planned 🎯
 - SQLite-based session persistence
-- Full Ollama integration
+- Additional model providers (OpenAI, Anthropic, etc.)
 - Advanced planning and multi-step orchestration
 - Human approval workflows
 - Checkpointing and recovery
@@ -48,6 +49,7 @@ Scooper is currently in Phase 2 of development, implementing multi-step agent ex
 
 - Python 3.10 or higher
 - [uv](https://docs.astral.sh/uv/) (recommended) or pip
+- **For Ollama**: [Ollama](https://ollama.ai) installed and running (optional)
 
 ## Installation
 
@@ -74,15 +76,57 @@ pip install scooper
 
 ## Quick Start
 
-Scooper implements multi-step agent execution with tool integration.
+Scooper implements multi-step agent execution with tool integration and supports local LLMs via Ollama.
 
 ### Working Examples
 
 - **Basic Agent**: [`examples/basic_usage.py`](examples/basic_usage.py) - Simple agent setup and execution
 - **Tool Registry**: [`examples/tool_execution.py`](examples/tool_execution.py) - Tool registration and execution
 - **Multi-Step Agent**: [`examples/multistep_agent.py`](examples/multistep_agent.py) - Multi-step execution with tools
+- **Ollama Integration**: [`examples/ollama_local_agent.py`](examples/ollama_local_agent.py) - Using local Ollama models
 
-### Multi-Step Agent Example
+### Ollama Agent Example
+
+```python
+from scooper.config import ModelProviderConfig, ScooperConfig
+from scooper.models import OllamaModelProvider
+from scooper.runtime import Agent, AgentConfig, AgentExecutor
+
+# Configure Ollama provider
+provider_config = ModelProviderConfig(
+    provider_type="ollama",
+    base_url="http://localhost:11434",
+    model_name="llama2",
+    timeout_seconds=60,
+)
+
+# Create agent
+agent_config = AgentConfig(
+    name="assistant",
+    provider_config=provider_config,
+    system_prompt="You are a helpful assistant.",
+)
+
+agent = Agent(agent_config)
+config = ScooperConfig(log_level="INFO", max_iterations=5)
+
+# Execute with Ollama
+async with OllamaModelProvider(provider_config) as provider:
+    executor = AgentExecutor(config, provider)
+    result = await executor.execute(agent, "What is Python?")
+    print(result.final_output)
+```
+
+### Prerequisites for Ollama
+
+1. Install Ollama: https://ollama.ai
+2. Start Ollama: `ollama serve` (or use Ollama desktop app)
+3. Pull a model: `ollama pull llama2`
+4. Ensure accessible at: http://localhost:11434
+
+### Multi-Step Agent Example (Testing)
+
+For testing without Ollama, use the FakeModelProvider:
 
 ```python
 from scooper.config import ModelProviderConfig, ScooperConfig
