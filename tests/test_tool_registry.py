@@ -9,7 +9,7 @@ from scooper.exceptions import (
     ToolNotFoundError,
     ToolValidationError,
 )
-from scooper.tools import Tool, ToolInput, ToolResult, ToolRegistry
+from scooper.tools import Tool, ToolInput, ToolRegistry, ToolResult
 
 
 class CalculatorTool(Tool):
@@ -34,9 +34,7 @@ class CalculatorTool(Tool):
 
         valid_ops = ["add", "subtract", "multiply", "divide"]
         if tool_input.operation not in valid_ops:
-            raise ToolValidationError(
-                f"Invalid operation. Must be one of: {', '.join(valid_ops)}"
-            )
+            raise ToolValidationError(f"Invalid operation. Must be one of: {', '.join(valid_ops)}")
         return True
 
     async def execute(self, tool_input: ToolInput) -> ToolResult:
@@ -260,21 +258,15 @@ class TestToolRegistry:
         assert result.output == 15
 
         # Subtraction
-        result = await registry.execute(
-            "calculator", ToolInput(operation="subtract", a=10, b=5)
-        )
+        result = await registry.execute("calculator", ToolInput(operation="subtract", a=10, b=5))
         assert result.output == 5
 
         # Multiplication
-        result = await registry.execute(
-            "calculator", ToolInput(operation="multiply", a=10, b=5)
-        )
+        result = await registry.execute("calculator", ToolInput(operation="multiply", a=10, b=5))
         assert result.output == 50
 
         # Division
-        result = await registry.execute(
-            "calculator", ToolInput(operation="divide", a=10, b=5)
-        )
+        result = await registry.execute("calculator", ToolInput(operation="divide", a=10, b=5))
         assert result.output == 2.0
 
     @pytest.mark.asyncio
@@ -304,9 +296,7 @@ class TestToolRegistry:
         registry.register(CalculatorTool())
 
         with pytest.raises(ToolValidationError) as exc_info:
-            await registry.execute(
-                "calculator", ToolInput(operation="invalid", a=1, b=2)
-            )
+            await registry.execute("calculator", ToolInput(operation="invalid", a=1, b=2))
 
         assert "Invalid operation" in str(exc_info.value)
 
@@ -318,9 +308,7 @@ class TestToolRegistry:
 
         # Division by zero
         with pytest.raises(ToolExecutionError) as exc_info:
-            await registry.execute(
-                "calculator", ToolInput(operation="divide", a=10, b=0)
-            )
+            await registry.execute("calculator", ToolInput(operation="divide", a=10, b=0))
 
         assert "Division by zero" in str(exc_info.value)
 
@@ -367,9 +355,7 @@ class TestToolRegistry:
         registry.register(CalculatorTool())
 
         result1 = await registry.execute("calculator", ToolInput(operation="add", a=1, b=2))
-        result2 = await registry.execute(
-            "calculator", ToolInput(operation="multiply", a=3, b=4)
-        )
+        result2 = await registry.execute("calculator", ToolInput(operation="multiply", a=3, b=4))
 
         assert result1.output == 3
         assert result2.output == 12

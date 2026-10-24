@@ -6,7 +6,6 @@ tools that agents can use to perform actions.
 
 import asyncio
 import logging
-from typing import Any
 
 from scooper.exceptions import (
     ToolExecutionError,
@@ -152,17 +151,13 @@ class ToolRegistry:
         except ToolValidationError:
             raise
         except Exception as e:
-            raise ToolValidationError(
-                f"Input validation failed for tool '{tool_name}': {e}"
-            ) from e
+            raise ToolValidationError(f"Input validation failed for tool '{tool_name}': {e}") from e
 
         # Execute with timeout
         execution_timeout = timeout if timeout is not None else self.default_timeout
 
         try:
-            logger.debug(
-                f"Executing tool '{tool_name}' with timeout={execution_timeout}s"
-            )
+            logger.debug(f"Executing tool '{tool_name}' with timeout={execution_timeout}s")
 
             result = await asyncio.wait_for(
                 tool.execute(tool_input),
@@ -173,9 +168,7 @@ class ToolRegistry:
             return result
 
         except asyncio.TimeoutError:
-            error_msg = (
-                f"Tool '{tool_name}' execution exceeded timeout of {execution_timeout}s"
-            )
+            error_msg = f"Tool '{tool_name}' execution exceeded timeout of {execution_timeout}s"
             logger.error(error_msg)
             raise ToolExecutionError(error_msg) from None
 

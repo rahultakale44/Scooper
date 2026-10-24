@@ -11,7 +11,7 @@ This example demonstrates how to:
 import asyncio
 
 from scooper.exceptions import ToolExecutionError, ToolValidationError
-from scooper.tools import Tool, ToolInput, ToolResult, ToolRegistry
+from scooper.tools import Tool, ToolInput, ToolRegistry, ToolResult
 
 
 class GreetingTool(Tool):
@@ -148,9 +148,7 @@ async def main() -> None:
     print(f"  Output: {result.output}")
 
     print("\n→ Enthusiastic greeting:")
-    result = await registry.execute(
-        "greeting", ToolInput(name="Charlie", style="enthusiastic")
-    )
+    result = await registry.execute("greeting", ToolInput(name="Charlie", style="enthusiastic"))
     print(f"  Output: {result.output}")
 
     # Example 2: Execute calculator tool
@@ -166,9 +164,7 @@ async def main() -> None:
     ]
 
     for op, a, b in operations:
-        result = await registry.execute(
-            "calculator", ToolInput(operation=op, a=a, b=b)
-        )
+        result = await registry.execute("calculator", ToolInput(operation=op, a=a, b=b))
         print(f"\n→ {a} {op} {b} = {result.output}")
 
     # Example 3: Error handling
@@ -186,18 +182,14 @@ async def main() -> None:
     # Invalid operation
     print("\n→ Test invalid operation:")
     try:
-        await registry.execute(
-            "calculator", ToolInput(operation="power", a=2, b=3)
-        )
+        await registry.execute("calculator", ToolInput(operation="power", a=2, b=3))
     except ToolValidationError as e:
         print(f"  ✗ Validation Error: {e}")
 
     # Division by zero
     print("\n→ Test division by zero:")
     try:
-        await registry.execute(
-            "calculator", ToolInput(operation="divide", a=10, b=0)
-        )
+        await registry.execute("calculator", ToolInput(operation="divide", a=10, b=0))
     except ToolExecutionError as e:
         print(f"  ✗ Execution Error: {e}")
 
