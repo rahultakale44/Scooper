@@ -71,16 +71,29 @@ pip install scooper
 
 ## Quick Start
 
+For a complete working example, see [`examples/basic_usage.py`](examples/basic_usage.py).
+
+Here's a minimal example of what's currently available:
+
 ```python
 from scooper import __version__
 from scooper.config import ScooperConfig
-from scooper.models import ModelProvider
 
-# Initialize configuration
-config = ScooperConfig(log_level="INFO", max_iterations=10)
+# Create configuration
+config = ScooperConfig(
+    log_level="INFO",
+    max_iterations=10,
+    timeout_seconds=300
+)
 
-# More examples coming as the framework matures
-print(f"Scooper v{__version__}")
+print(f"Scooper v{__version__} initialized")
+print(f"Max iterations: {config.max_iterations}")
+```
+
+To run the full working example with agent execution:
+
+```bash
+python examples/basic_usage.py
 ```
 
 ## Development
