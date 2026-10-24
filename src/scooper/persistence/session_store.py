@@ -96,6 +96,8 @@ class SessionStore:
                 check_same_thread=False,  # Allow use across async contexts
             )
             self._conn.row_factory = sqlite3.Row  # Enable column access by name
+            # Enable foreign key constraints
+            self._conn.execute("PRAGMA foreign_keys = ON")
         return self._conn
 
     def _initialize_schema(self) -> None:
