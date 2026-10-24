@@ -10,9 +10,16 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from scooper.config import ScooperConfig
-from scooper.exceptions import RuntimeMaxIterationsError
-from scooper.models.base import ModelProvider, ModelRequest, ModelResponse
+from scooper.exceptions import (
+    RuntimeMaxIterationsError,
+    ToolExecutionError,
+    ToolNotFoundError,
+    ToolValidationError,
+)
+from scooper.models.base import Message, ModelProvider, ModelRequest, ModelResponse, ToolCall
 from scooper.runtime.agent import Agent
+from scooper.tools.base import ToolInput
+from scooper.tools.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +31,8 @@ class ExecutionResult(BaseModel):
         success: Whether execution completed successfully
         final_output: The final output from the agent
         iterations: Number of iterations executed
+        stop_reason: Why execution stopped (completed, max_iterations, error)
+        tool_calls_made: Number of tool calls executed during the run
         error: Error message if execution failed
         metadata: Additional execution metadata
     """
@@ -39,6 +48,15 @@ class ExecutionResult(BaseModel):
 
     iterations: int = Field(
         description="Number of iterations executed",
+    )
+
+    stop_reason: str = Field(
+        description="Why execution stopped (completed, max_iterations, error)",
+    )
+
+    tool_calls_made: int = Field(
+        default=0,
+        description="Number of tool calls executed during the run",
     )
 
     error: str | None = Field(
@@ -57,29 +75,34 @@ class ExecutionResult(BaseModel):
 
 
 class AgentExecutor:
-    """Executes agents with configured model providers.
+    """Executes agents with configured model providers and tools.
 
-    The executor manages the execution lifecycle, enforcing iteration
-    limits and coordinating between the agent and model provider.
+    The executor manages the multi-step execution lifecycle, coordinating
+    between the agent, model provider, and tool registry. It enforces iteration
+    limits and handles tool execution with proper error handling.
 
     Attributes:
         config: Global Scooper configuration
         model_provider: Model provider for generating responses
+        tool_registry: Optional tool registry for tool execution
     """
 
     def __init__(
         self,
         config: ScooperConfig,
         model_provider: ModelProvider,
+        tool_registry: ToolRegistry | None = None,
     ):
         """Initialize the executor.
 
         Args:
             config: Global Scooper configuration
             model_provider: Model provider for generation
+            tool_registry: Optional tool registry for tool execution
         """
         self.config = config
         self.model_provider = model_provider
+        self.tool_registry = tool_registry
 
         # Configure logging
         logging.basicConfig(
@@ -88,11 +111,14 @@ class AgentExecutor:
         )
 
     async def execute(self, agent: Agent, task: str) -> ExecutionResult:
-        """Execute an agent on a given task.
+        """Execute an agent on a given task with multi-step tool integration.
 
-        This is a minimal implementation that demonstrates the execution
-        pattern. Future versions will support tool calls, planning, and
-        multi-step orchestration.
+        The executor runs a bounded loop where:
+        1. The model generates a response (text or tool calls)
+        2. If text response, execution completes successfully
+        3. If tool calls, execute them via the registry
+        4. Feed tool results back to the model
+        5. Repeat until completion or max iterations
 
         Args:
             agent: The agent to execute
@@ -109,6 +135,11 @@ class AgentExecutor:
         # Determine max iterations
         max_iterations = agent.config.max_iterations or self.config.max_iterations
 
+        # Track execution state
+        iteration_count = 0
+        tool_calls_made = 0
+        conversation: list[Message] = []
+
         try:
             # Check provider health
             is_healthy = await self.model_provider.health_check()
@@ -117,62 +148,194 @@ class AgentExecutor:
                 return ExecutionResult(
                     success=False,
                     iterations=0,
+                    stop_reason="provider_unhealthy",
                     error="Model provider is not available",
                 )
 
-            # PHASE 1 LIMITATION: Single-iteration execution only
-            # The current implementation returns after the first model response.
-            # TODO (Phase 2): Implement multi-step execution loop:
-            #   - Parse model response for tool calls
-            #   - Execute requested tools with validation
-            #   - Feed tool results back into the model
-            #   - Continue until task completion or max_iterations reached
-            iteration_count = 0
-            combined_prompt = f"{agent.system_prompt}\n\nTask: {task}"
+            # Initialize conversation with system prompt and user task
+            conversation.append(
+                Message(role="user", content=f"{agent.system_prompt}\n\nTask: {task}")
+            )
 
-            for _iteration in range(max_iterations):
-                iteration_count += 1
+            # Main execution loop
+            for iteration in range(max_iterations):
+                iteration_count = iteration + 1
                 logger.debug(f"Iteration {iteration_count}/{max_iterations}")
 
-                # Generate response
+                # Generate model response
                 request = ModelRequest(
-                    prompt=combined_prompt,
+                    messages=conversation,
                     max_tokens=1024,
                     temperature=0.7,
                 )
 
                 response: ModelResponse = await self.model_provider.generate(request)
-                logger.debug(f"Model response: {response.content[:100]}...")
 
-                # PHASE 1: Always return after first iteration
-                # Phase 2 will check for tool calls and continue the loop
-                logger.info(f"Execution completed in {iteration_count} iteration(s)")
+                # Handle text response (final answer)
+                if response.response_type == "text":
+                    logger.info(
+                        f"Execution completed successfully in {iteration_count} iteration(s), "
+                        f"{tool_calls_made} tool call(s)"
+                    )
 
-                return ExecutionResult(
-                    success=True,
-                    final_output=response.content,
-                    iterations=iteration_count,
-                    metadata={
-                        "agent_name": agent.name,
-                        "finish_reason": response.finish_reason,
-                        "token_count": response.token_count,
-                    },
-                )
+                    return ExecutionResult(
+                        success=True,
+                        final_output=response.content,
+                        iterations=iteration_count,
+                        stop_reason="completed",
+                        tool_calls_made=tool_calls_made,
+                        metadata={
+                            "agent_name": agent.name,
+                            "finish_reason": response.finish_reason,
+                            "token_count": response.token_count,
+                        },
+                    )
 
-            # NOTE: This code is currently unreachable in Phase 1 since we always
-            # return after the first iteration above. It will become reachable in
-            # Phase 2 when the full multi-step execution loop is implemented.
-            # TODO (Phase 2): Test this path when iteration loop is functional
-            raise RuntimeMaxIterationsError(f"Maximum iterations ({max_iterations}) exceeded")
+                # Handle tool calls
+                elif response.response_type == "tool_calls" and response.tool_calls:
+                    if not self.tool_registry:
+                        error_msg = "Model requested tool calls but no tool registry is configured"
+                        logger.error(error_msg)
+                        return ExecutionResult(
+                            success=False,
+                            iterations=iteration_count,
+                            stop_reason="no_tool_registry",
+                            tool_calls_made=tool_calls_made,
+                            error=error_msg,
+                        )
+
+                    # Add assistant message with tool calls to conversation
+                    conversation.append(
+                        Message(
+                            role="assistant",
+                            content=response.content,
+                            tool_calls=response.tool_calls,
+                        )
+                    )
+
+                    # Execute each requested tool
+                    for tool_call in response.tool_calls:
+                        tool_calls_made += 1
+                        tool_result_message = await self._execute_tool_call(tool_call)
+                        conversation.append(tool_result_message)
+
+                    # Continue to next iteration to process tool results
+                    continue
+
+                else:
+                    # Unexpected response format
+                    error_msg = f"Unexpected model response format: {response.response_type}"
+                    logger.error(error_msg)
+                    return ExecutionResult(
+                        success=False,
+                        iterations=iteration_count,
+                        stop_reason="invalid_response",
+                        tool_calls_made=tool_calls_made,
+                        error=error_msg,
+                    )
+
+            # Exceeded max iterations
+            logger.error(f"Max iterations ({max_iterations}) exceeded")
+            raise RuntimeMaxIterationsError(
+                f"Execution exceeded maximum iterations ({max_iterations})"
+            )
 
         except RuntimeMaxIterationsError:
-            logger.error(f"Max iterations ({max_iterations}) exceeded")
-            raise
+            return ExecutionResult(
+                success=False,
+                iterations=iteration_count,
+                stop_reason="max_iterations",
+                tool_calls_made=tool_calls_made,
+                error=f"Maximum iterations ({max_iterations}) exceeded",
+            )
 
         except Exception as e:
             logger.error(f"Execution failed: {e}")
             return ExecutionResult(
                 success=False,
-                iterations=iteration_count if "iteration_count" in locals() else 0,
+                iterations=iteration_count,
+                stop_reason="error",
+                tool_calls_made=tool_calls_made,
                 error=str(e),
+            )
+
+    async def _execute_tool_call(self, tool_call: ToolCall) -> Message:
+        """Execute a single tool call and return the result as a message.
+
+        This method handles tool lookup, validation, execution, and error handling,
+        returning a structured tool message for the conversation history.
+
+        Args:
+            tool_call: The tool call to execute
+
+        Returns:
+            Message containing the tool execution result
+        """
+        logger.debug(f"Executing tool call: {tool_call.name} (id={tool_call.id})")
+
+        # Type guard: this method should only be called when registry is not None
+        assert self.tool_registry is not None, "Tool registry must not be None"
+
+        try:
+            # Convert arguments dict to ToolInput
+            tool_input = ToolInput(**tool_call.arguments)
+
+            # Execute tool via registry
+            result = await self.tool_registry.execute(
+                tool_name=tool_call.name,
+                tool_input=tool_input,
+            )
+
+            if result.success:
+                logger.debug(f"Tool {tool_call.name} succeeded: {str(result.output)[:100]}")
+                content = (
+                    str(result.output)
+                    if result.output is not None
+                    else "Tool executed successfully"
+                )
+            else:
+                logger.warning(f"Tool {tool_call.name} failed: {result.error}")
+                content = f"Tool execution failed: {result.error}"
+
+            return Message(
+                role="tool",
+                content=content,
+                tool_call_id=tool_call.id,
+                name=tool_call.name,
+            )
+
+        except ToolNotFoundError as e:
+            logger.error(f"Tool not found: {tool_call.name}")
+            return Message(
+                role="tool",
+                content=f"Error: Tool '{tool_call.name}' not found. {str(e)}",
+                tool_call_id=tool_call.id,
+                name=tool_call.name,
+            )
+
+        except ToolValidationError as e:
+            logger.error(f"Tool validation failed for {tool_call.name}: {e}")
+            return Message(
+                role="tool",
+                content=f"Error: Invalid arguments for tool '{tool_call.name}'. {str(e)}",
+                tool_call_id=tool_call.id,
+                name=tool_call.name,
+            )
+
+        except ToolExecutionError as e:
+            logger.error(f"Tool execution failed for {tool_call.name}: {e}")
+            return Message(
+                role="tool",
+                content=f"Error: Tool execution failed. {str(e)}",
+                tool_call_id=tool_call.id,
+                name=tool_call.name,
+            )
+
+        except Exception as e:
+            logger.error(f"Unexpected error executing tool {tool_call.name}: {e}")
+            return Message(
+                role="tool",
+                content=f"Error: Unexpected error during tool execution. {str(e)}",
+                tool_call_id=tool_call.id,
+                name=tool_call.name,
             )

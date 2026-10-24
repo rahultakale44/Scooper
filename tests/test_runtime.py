@@ -158,11 +158,13 @@ class TestExecutionResult:
             success=True,
             final_output="Task completed",
             iterations=1,
+            stop_reason="completed",
         )
 
         assert result.success is True
         assert result.final_output == "Task completed"
         assert result.iterations == 1
+        assert result.stop_reason == "completed"
         assert result.error is None
 
     def test_failure_result(self):
@@ -170,10 +172,12 @@ class TestExecutionResult:
         result = ExecutionResult(
             success=False,
             iterations=0,
+            stop_reason="error",
             error="Execution failed",
         )
 
         assert result.success is False
+        assert result.stop_reason == "error"
         assert result.error == "Execution failed"
         assert result.final_output is None
 
@@ -183,10 +187,12 @@ class TestExecutionResult:
             success=True,
             final_output="Output",
             iterations=2,
+            stop_reason="completed",
             metadata={"agent_name": "test"},
         )
 
         assert result.metadata == {"agent_name": "test"}
+        assert result.stop_reason == "completed"
 
 
 class TestAgentExecutor:
