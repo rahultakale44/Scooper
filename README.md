@@ -20,21 +20,22 @@ Scooper is a Python framework designed for developers who need to create, execut
 
 🚧 **Under Active Development**
 
-Scooper is currently in Phase 1 of development. The foundation is being established with core contracts, interfaces, and minimal working implementations.
+Scooper is currently in Phase 2 of development, implementing multi-step agent execution with tool integration.
 
 ### Implemented ✅
 - Python package structure and development tooling
 - Core configuration and exception handling
-- Model provider interface contracts
-- Tool system foundation
-- Minimal agent runtime architecture
-- Tool registry with validation and execution
+- Model provider interface contracts with tool-call support
+- Tool system foundation with validation and execution
+- Tool registry with timeout support
+- Multi-step agent execution loop
+- Agent-tool integration with error handling
+- Conversation history and message types
 - Deterministic unit testing infrastructure
 
 ### Planned 🎯
 - SQLite-based session persistence
 - Full Ollama integration
-- Agent-tool integration in execution loop
 - Advanced planning and multi-step orchestration
 - Human approval workflows
 - Checkpointing and recovery
@@ -73,47 +74,69 @@ pip install scooper
 
 ## Quick Start
 
-Scooper is currently in Phase 2 development with tool registry and execution capabilities.
+Scooper implements multi-step agent execution with tool integration.
 
 ### Working Examples
 
-- **Agent Execution**: [`examples/basic_usage.py`](examples/basic_usage.py) - Complete agent setup and execution
+- **Basic Agent**: [`examples/basic_usage.py`](examples/basic_usage.py) - Simple agent setup and execution
 - **Tool Registry**: [`examples/tool_execution.py`](examples/tool_execution.py) - Tool registration and execution
+- **Multi-Step Agent**: [`examples/multistep_agent.py`](examples/multistep_agent.py) - Multi-step execution with tools
 
-### Minimal Configuration Example
-
-```python
-from scooper import __version__
-from scooper.config import ScooperConfig
-
-# Create configuration
-config = ScooperConfig(log_level="INFO", max_iterations=10, timeout_seconds=300)
-
-print(f"Scooper v{__version__} initialized")
-print(f"Max iterations: {config.max_iterations}")
-```
-
-### Tool Registry Example
+### Multi-Step Agent Example
 
 ```python
+from scooper.config import ModelProviderConfig, ScooperConfig
+from scooper.models import FakeModelProvider, ModelResponse, ToolCall
+from scooper.runtime import Agent, AgentConfig, AgentExecutor
 from scooper.tools import ToolRegistry
 
-# Create and use a tool registry
+# Configure
+config = ScooperConfig(log_level="INFO", max_iterations=10)
+agent_config = AgentConfig(
+    name="assistant",
+    provider_config=ModelProviderConfig(...),
+    system_prompt="You are a helpful assistant."
+)
+
+# Create agent with tools
+agent = Agent(agent_config)
 registry = ToolRegistry()
 registry.register(my_tool)
 
-# Execute registered tools
-result = await registry.execute("my_tool", tool_input)
+# Script multi-step responses
+scripted_responses = [
+    ModelResponse(
+        response_type="tool_calls",
+        tool_calls=[ToolCall(id="1", name="search", arguments={"query": "python"})],
+        finish_reason="tool_calls",
+    ),
+    ModelResponse(
+        response_type="text",
+        content="Based on search results, Python is...",
+        finish_reason="completed",
+    ),
+]
+
+provider = FakeModelProvider(scripted_responses=scripted_responses)
+executor = AgentExecutor(config, provider, registry)
+
+# Execute with tool integration
+result = await executor.execute(agent, "What is Python?")
+print(f"Result: {result.final_output}")
+print(f"Tool calls made: {result.tool_calls_made}")
 ```
 
 Run the examples:
 
 ```bash
-# Agent execution
+# Basic agent
 python examples/basic_usage.py
 
 # Tool execution
 python examples/tool_execution.py
+
+# Multi-step agent with tools
+python examples/multistep_agent.py
 ```
 
 ## Development
