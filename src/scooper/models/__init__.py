@@ -8,6 +8,7 @@ from scooper.models.base import (
     ToolCall,
 )
 from scooper.models.fake import FakeModelProvider
+from scooper.models.ollama import OllamaModelProvider
 
 __all__ = [
     "Message",
@@ -16,4 +17,5 @@ __all__ = [
     "ModelResponse",
     "ToolCall",
     "FakeModelProvider",
+    "OllamaModelProvider",
 ]
