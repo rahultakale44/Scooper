@@ -120,8 +120,13 @@ class AgentExecutor:
                     error="Model provider is not available",
                 )
 
-            # For Phase 1, we do a simple single-iteration execution
-            # Future phases will implement the full execution loop
+            # PHASE 1 LIMITATION: Single-iteration execution only
+            # The current implementation returns after the first model response.
+            # TODO (Phase 2): Implement multi-step execution loop:
+            #   - Parse model response for tool calls
+            #   - Execute requested tools with validation
+            #   - Feed tool results back into the model
+            #   - Continue until task completion or max_iterations reached
             iteration_count = 0
             combined_prompt = f"{agent.system_prompt}\n\nTask: {task}"
 
@@ -139,8 +144,8 @@ class AgentExecutor:
                 response: ModelResponse = await self.model_provider.generate(request)
                 logger.debug(f"Model response: {response.content[:100]}...")
 
-                # For Phase 1, we complete after first iteration
-                # Future versions will check for tool calls and continue loop
+                # PHASE 1: Always return after first iteration
+                # Phase 2 will check for tool calls and continue the loop
                 logger.info(f"Execution completed in {iteration_count} iteration(s)")
 
                 return ExecutionResult(
@@ -154,7 +159,10 @@ class AgentExecutor:
                     },
                 )
 
-            # Should not reach here in Phase 1, but included for completeness
+            # NOTE: This code is currently unreachable in Phase 1 since we always
+            # return after the first iteration above. It will become reachable in
+            # Phase 2 when the full multi-step execution loop is implemented.
+            # TODO (Phase 2): Test this path when iteration loop is functional
             raise RuntimeMaxIterationsError(f"Maximum iterations ({max_iterations}) exceeded")
 
         except RuntimeMaxIterationsError:
