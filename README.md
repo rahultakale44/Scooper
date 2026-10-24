@@ -28,11 +28,13 @@ Scooper is currently in Phase 1 of development. The foundation is being establis
 - Model provider interface contracts
 - Tool system foundation
 - Minimal agent runtime architecture
+- Tool registry with validation and execution
 - Deterministic unit testing infrastructure
 
 ### Planned 🎯
 - SQLite-based session persistence
 - Full Ollama integration
+- Agent-tool integration in execution loop
 - Advanced planning and multi-step orchestration
 - Human approval workflows
 - Checkpointing and recovery
@@ -71,9 +73,14 @@ pip install scooper
 
 ## Quick Start
 
-For a complete working example, see [`examples/basic_usage.py`](examples/basic_usage.py).
+Scooper is currently in Phase 2 development with tool registry and execution capabilities.
 
-Here's a minimal example of what's currently available:
+### Working Examples
+
+- **Agent Execution**: [`examples/basic_usage.py`](examples/basic_usage.py) - Complete agent setup and execution
+- **Tool Registry**: [`examples/tool_execution.py`](examples/tool_execution.py) - Tool registration and execution
+
+### Minimal Configuration Example
 
 ```python
 from scooper import __version__
@@ -86,10 +93,27 @@ print(f"Scooper v{__version__} initialized")
 print(f"Max iterations: {config.max_iterations}")
 ```
 
-To run the full working example with agent execution:
+### Tool Registry Example
+
+```python
+from scooper.tools import ToolRegistry
+
+# Create and use a tool registry
+registry = ToolRegistry()
+registry.register(my_tool)
+
+# Execute registered tools
+result = await registry.execute("my_tool", tool_input)
+```
+
+Run the examples:
 
 ```bash
+# Agent execution
 python examples/basic_usage.py
+
+# Tool execution
+python examples/tool_execution.py
 ```
 
 ## Development
