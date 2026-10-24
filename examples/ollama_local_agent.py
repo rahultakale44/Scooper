@@ -52,9 +52,7 @@ class WeatherTool(Tool):
             "tokyo": "Clear, 68°F",
         }
 
-        weather = weather_data.get(
-            location.lower(), f"Weather data not available for {location}"
-        )
+        weather = weather_data.get(location.lower(), f"Weather data not available for {location}")
 
         return ToolResult(
             success=True,

@@ -98,10 +98,7 @@ class OllamaModelProvider(ModelProvider):
             raise ModelProviderConnectionError(error_msg) from e
 
         except httpx.ConnectError as e:
-            error_msg = (
-                f"Failed to connect to Ollama at {self.config.base_url}. "
-                f"Is Ollama running?"
-            )
+            error_msg = f"Failed to connect to Ollama at {self.config.base_url}. Is Ollama running?"
             logger.error(error_msg)
             raise ModelProviderConnectionError(error_msg) from e
 
@@ -131,11 +128,11 @@ class OllamaModelProvider(ModelProvider):
             logger.warning(f"Ollama health check failed: {e}")
             return False
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "OllamaModelProvider":
         """Async context manager entry."""
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Async context manager exit - close HTTP client."""
         await self.client.aclose()
 
@@ -168,7 +165,7 @@ class OllamaModelProvider(ModelProvider):
         }
 
         # Add optional parameters
-        options = {}
+        options: dict[str, Any] = {}
         if request.temperature is not None:
             options["temperature"] = request.temperature
 
@@ -176,11 +173,11 @@ class OllamaModelProvider(ModelProvider):
         if request.max_tokens:
             options["num_predict"] = request.max_tokens
 
-        if options:
-            ollama_request["options"] = options
-
         if request.stop_sequences:
             options["stop"] = request.stop_sequences
+
+        if options:
+            ollama_request["options"] = options
 
         return ollama_request
 
@@ -197,13 +194,13 @@ class OllamaModelProvider(ModelProvider):
             return {"role": "user", "content": message.content or ""}
 
         elif message.role == "assistant":
-            ollama_msg = {"role": "assistant", "content": message.content or ""}
+            ollama_msg: dict[str, Any] = {"role": "assistant", "content": message.content or ""}
 
             # Handle tool calls if present
             if message.tool_calls:
                 # Ollama supports tool calls in newer versions
                 # Format: {"role": "assistant", "content": "", "tool_calls": [...]}
-                tool_calls_data = []
+                tool_calls_data: list[dict[str, Any]] = []
                 for tc in message.tool_calls:
                     tool_calls_data.append(
                         {
@@ -240,7 +237,6 @@ class OllamaModelProvider(ModelProvider):
         """
         try:
             message = response_data["message"]
-            role = message.get("role", "assistant")
 
             # Check for tool calls
             tool_calls_data = message.get("tool_calls")

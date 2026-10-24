@@ -3,7 +3,7 @@
 import json
 
 import pytest
-from httpx import AsyncClient, ConnectError, Response, TimeoutException
+from httpx import ConnectError, Response, TimeoutException
 
 from scooper.config import ModelProviderConfig
 from scooper.exceptions import (
