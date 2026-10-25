@@ -32,10 +32,10 @@ Scooper is currently in Phase 2 of development, implementing multi-step agent ex
 - Multi-step agent execution loop
 - Agent-tool integration with error handling
 - Conversation history and message types
+- **SQLite session persistence** with conversation history and execution records
 - Deterministic unit testing infrastructure
 
 ### Planned 🎯
-- SQLite-based session persistence
 - Additional model providers (OpenAI, Anthropic, etc.)
 - Advanced planning and multi-step orchestration
 - Human approval workflows
@@ -84,6 +84,7 @@ Scooper implements multi-step agent execution with tool integration and supports
 - **Tool Registry**: [`examples/tool_execution.py`](examples/tool_execution.py) - Tool registration and execution
 - **Multi-Step Agent**: [`examples/multistep_agent.py`](examples/multistep_agent.py) - Multi-step execution with tools
 - **Ollama Integration**: [`examples/ollama_local_agent.py`](examples/ollama_local_agent.py) - Using local Ollama models
+- **Persistent Sessions**: [`examples/persistent_session.py`](examples/persistent_session.py) - SQLite session persistence
 
 ### Ollama Agent Example
 
@@ -181,7 +182,100 @@ python examples/tool_execution.py
 
 # Multi-step agent with tools
 python examples/multistep_agent.py
+
+# Persistent sessions
+python examples/persistent_session.py
 ```
+
+## Session Persistence
+
+Scooper includes SQLite-based session persistence for storing conversation history and execution records across runs.
+
+### Features
+
+- **Session Management**: Create, retrieve, list, and delete sessions
+- **Conversation History**: Persist all messages (user, assistant, tool) in chronological order
+- **Tool Call Preservation**: Serialize and deserialize tool calls with arguments
+- **Execution Records**: Track execution status, iterations, and results
+- **Schema Versioning**: Built-in migration support for database evolution
+- **Async-Compatible**: Non-blocking interface suitable for async workflows
+
+### Basic Usage
+
+```python
+from scooper.persistence import SessionStore, Session
+from scooper.models import Message, ToolCall
+
+# Create a session store
+store = SessionStore(db_path="my_sessions.db")
+
+# Create a session
+session = await store.create_session(
+    session_id="user-123-session",
+    agent_name="assistant",
+    metadata={"user_id": "123", "context": "support"},
+)
+
+# Save conversation messages
+await store.save_message(
+    session.session_id, Message(role="user", content="Hello, can you help me?")
+)
+
+await store.save_message(
+    session.session_id, Message(role="assistant", content="Of course! What do you need?")
+)
+
+# Load conversation history
+messages = await store.load_messages(session.session_id)
+for msg in messages:
+    print(f"[{msg.role}] {msg.content}")
+
+# Save execution result
+from scooper.runtime import ExecutionResult
+
+result = ExecutionResult(
+    success=True, final_output="Task completed", iterations=2, stop_reason="completed"
+)
+await store.save_execution(session.session_id, result)
+
+# List all sessions
+sessions = await store.list_sessions()
+for s in sessions:
+    print(f"{s.session_id}: {s.agent_name}")
+
+# Clean up
+store.close()
+```
+
+### Context Manager Support
+
+```python
+# Automatic cleanup with context manager
+async with SessionStore(db_path="sessions.db") as store:
+    session = await store.create_session("session-1", "agent")
+    # ... use store ...
+# Connection automatically closed
+```
+
+### Database Schema
+
+The persistence layer uses three main tables:
+
+- **sessions**: Session metadata (ID, agent name, timestamps, metadata)
+- **messages**: Conversation messages with sequence ordering
+- **executions**: Execution records with status and results
+
+Foreign key constraints ensure referential integrity, and cascading deletes clean up related data.
+
+### Important Notes
+
+- Persistence is **optional** - existing code works without a database
+- Sessions are **isolated** - multiple stores can access the same database
+- The store uses **parameterized queries** to prevent SQL injection
+- Database path defaults to `scooper_sessions.db` in the current directory
+- Schema version is tracked for future migrations
+
+See [`examples/persistent_session.py`](examples/persistent_session.py) for comprehensive examples.
 
 ## Development
 
@@ -218,7 +312,8 @@ scooper/
 ├── runtime/      # Execution engine and lifecycle management
 ├── models/       # Model provider abstractions and adapters
 ├── tools/        # Tool registry and execution framework
-├── sessions/     # Session and memory management
+├── persistence/  # Session storage and conversation history
+├── sessions/     # Session and memory management (planned)
 └── observability/# Logging, tracing, and evaluation
 ```
 
@@ -236,10 +331,11 @@ The architecture prioritizes:
 - Basic runtime implementation
 
 ### Phase 2: Core Functionality
-- Ollama integration
-- SQLite persistence
-- Tool execution with validation
+- Ollama integration ✅
+- SQLite persistence ✅
+- Tool execution with validation ✅
 - Session management
+- Additional model providers
 
 ### Phase 3: Advanced Features
 - Planning and orchestration

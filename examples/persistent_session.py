@@ -114,7 +114,7 @@ async def example_load_and_resume_session() -> None:
         for i, msg in enumerate(messages, 1):
             print(f"{i}. [{msg.role}] {msg.content}")
 
-        print(f"\n✓ Successfully recovered conversation from database")
+        print("\n✓ Successfully recovered conversation from database")
 
     finally:
         store.close()
@@ -190,13 +190,13 @@ async def example_conversation_with_tools() -> None:
         )
         await store.save_execution(session_id, result)
 
-        print(f"\n✓ Tool conversation persisted")
+        print("\n✓ Tool conversation persisted")
 
         # Reload and verify tool calls are preserved
         loaded_messages = await store.load_messages(session_id)
         assistant_msg = loaded_messages[1]
 
-        print(f"\n✓ Verified: Tool calls correctly serialized/deserialized")
+        print("\n✓ Verified: Tool calls correctly serialized/deserialized")
         print(f"   Tool calls in message: {len(assistant_msg.tool_calls or [])}")
 
     finally:
@@ -245,7 +245,7 @@ async def example_integrated_with_executor() -> None:
 
         result = await executor.execute(agent, task)
 
-        print(f"Execution completed:")
+        print("Execution completed:")
         print(f"  Success: {result.success}")
         print(f"  Iterations: {result.iterations}")
         print(f"  Output: {result.final_output}")
@@ -261,7 +261,7 @@ async def example_integrated_with_executor() -> None:
 
         await store.save_execution(session_id, result)
 
-        print(f"\n✓ Execution result saved to session")
+        print("\n✓ Execution result saved to session")
 
     finally:
         store.close()

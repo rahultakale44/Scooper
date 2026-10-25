@@ -383,9 +383,7 @@ class TestSessionStore:
             Message(
                 role="assistant",
                 content="Let me check that",
-                tool_calls=[
-                    ToolCall(id="call-1", name="get_weather", arguments={"city": "NYC"})
-                ],
+                tool_calls=[ToolCall(id="call-1", name="get_weather", arguments={"city": "NYC"})],
             ),
             Message(
                 role="tool",
@@ -437,7 +435,7 @@ class TestSession:
             updated_at="2024-01-01T00:00:00Z",
         )
 
-        with pytest.raises(Exception):  # Pydantic raises validation error
+        with pytest.raises(ValueError):  # Pydantic raises ValidationError on frozen models
             session.session_id = "new-id"  # type: ignore
 
     def test_session_with_metadata(self) -> None:

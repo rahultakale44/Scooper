@@ -64,3 +64,9 @@ site/
 
 # Logs
 *.log
+
+# SQLite databases
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
