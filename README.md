@@ -33,6 +33,7 @@ Scooper is currently in Phase 2 of development, implementing multi-step agent ex
 - Agent-tool integration with error handling
 - Conversation history and message types
 - **SQLite session persistence** with conversation history and execution records
+- **Resumable agent sessions** with full conversation context across restarts
 - Deterministic unit testing infrastructure
 
 ### Planned 🎯
@@ -85,6 +86,7 @@ Scooper implements multi-step agent execution with tool integration and supports
 - **Multi-Step Agent**: [`examples/multistep_agent.py`](examples/multistep_agent.py) - Multi-step execution with tools
 - **Ollama Integration**: [`examples/ollama_local_agent.py`](examples/ollama_local_agent.py) - Using local Ollama models
 - **Persistent Sessions**: [`examples/persistent_session.py`](examples/persistent_session.py) - SQLite session persistence
+- **Resumable Sessions**: [`examples/resumable_sessions.py`](examples/resumable_sessions.py) - Complete resumable conversation workflow
 
 ### Ollama Agent Example
 
@@ -185,7 +187,93 @@ python examples/multistep_agent.py
 
 # Persistent sessions
 python examples/persistent_session.py
+
+# Resumable sessions (complete workflow)
+python examples/resumable_sessions.py
 ```
+
+## Resumable Sessions
+
+Scooper supports **resumable agent sessions** - a real framework capability for maintaining conversation context across application restarts.
+
+### How It Works
+
+1. **Create a session**: Start a new persisted conversation
+2. **Execute agent task**: Messages and results are automatically saved
+3. **Close application**: Session data persists in SQLite
+4. **Reopen application**: Load session and conversation history
+5. **Continue conversation**: Agent has full context from previous interactions
+
+### Basic Usage
+
+```python
+from scooper.config import ScooperConfig, ModelProviderConfig
+from scooper.models import FakeModelProvider
+from scooper.persistence import SessionStore
+from scooper.runtime import Agent, AgentConfig, PersistentAgentExecutor
+
+# Setup
+config = ScooperConfig()
+agent_config = AgentConfig(
+    name="assistant",
+    provider_config=ModelProviderConfig(...),
+)
+agent = Agent(agent_config)
+
+# Create persistent executor with session store
+store = SessionStore(db_path="my_sessions.db")
+provider = FakeModelProvider(response_content="Hello!")
+executor = PersistentAgentExecutor(
+    config=config,
+    model_provider=provider,
+    session_store=store,
+)
+
+# First conversation - create new session
+result1, session = await executor.execute_with_session(
+    agent=agent,
+    task="Hi, I'm starting a new conversation",
+    session_id="user-123",
+    resume=False,  # Create new
+)
+
+# Close application (session persists in database)
+store.close()
+
+# --- Application restart ---
+
+# Reopen and resume
+store = SessionStore(db_path="my_sessions.db")
+executor = PersistentAgentExecutor(config, provider, session_store=store)
+
+result2, session = await executor.execute_with_session(
+    agent=agent,
+    task="Do you remember what we discussed?",
+    session_id="user-123",
+    resume=True,  # Resume existing
+)
+# Agent has full conversation history!
+```
+
+### Key Features
+
+- ✅ **Full history preservation**: All messages, tool calls, and results persist
+- ✅ **Automatic persistence**: Messages saved as conversation progresses
+- ✅ **Cross-restart continuity**: Close and reopen without losing context
+- ✅ **Multiple sessions**: Manage concurrent conversations independently
+- ✅ **Tool call preservation**: Tool calls and results correctly restored
+- ✅ **Backward compatible**: Works with or without persistence
+- ✅ **No replays**: Historical tool calls aren't re-executed on resume
+
+### Use Cases
+
+- **Chat applications**: Maintain conversation context across sessions
+- **Long-running tasks**: Resume interrupted agent workflows
+- **Multi-session agents**: Handle multiple concurrent conversations
+- **Debugging**: Review complete conversation history and execution flow
+- **Context building**: Agents build understanding over multiple interactions
+
+See [`examples/resumable_sessions.py`](examples/resumable_sessions.py) for a complete working demonstration.
 
 ## Session Persistence
 
