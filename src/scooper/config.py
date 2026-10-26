@@ -18,6 +18,7 @@ class ScooperConfig(BaseModel):
         log_level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         max_iterations: Maximum number of agent execution iterations
         timeout_seconds: Maximum execution time in seconds (0 = no timeout)
+        max_tool_calls_per_execution: Maximum tool calls per execution (0 = unlimited)
     """
 
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(
@@ -36,6 +37,12 @@ class ScooperConfig(BaseModel):
         default=300,
         ge=0,
         description="Maximum execution time in seconds (0 = no timeout)",
+    )
+
+    max_tool_calls_per_execution: int = Field(
+        default=0,
+        ge=0,
+        description="Maximum tool calls per execution (0 = unlimited)",
     )
 
     @field_validator("log_level")
