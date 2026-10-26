@@ -47,7 +47,9 @@ async def example_1_create_and_execute() -> None:
 
     # Create session store and executor
     store = SessionStore(db_path=db_path)
-    provider = FakeModelProvider(response_content="Hello! I'm your AI assistant. How can I help you today?")
+    provider = FakeModelProvider(
+        response_content="Hello! I'm your AI assistant. How can I help you today?"
+    )
     executor = PersistentAgentExecutor(
         config=config,
         model_provider=provider,
@@ -115,11 +117,17 @@ async def example_2_resume_session() -> None:
     print(f"\n📜 Loaded conversation history ({len(history)} messages):")
     for i, msg in enumerate(history, 1):
         role_emoji = "👤" if msg.role == "user" else "🤖"
-        content = (msg.content or "")[:60] + "..." if msg.content and len(msg.content) > 60 else (msg.content or "")
+        content = (
+            (msg.content or "")[:60] + "..."
+            if msg.content and len(msg.content) > 60
+            else (msg.content or "")
+        )
         print(f"  {i}. {role_emoji} {msg.role}: {content}")
 
     # Continue conversation with new provider
-    provider = FakeModelProvider(response_content="Yes, I remember our earlier conversation. What would you like to discuss?")
+    provider = FakeModelProvider(
+        response_content="Yes, I remember our earlier conversation. What would you like to discuss?"
+    )
     executor = PersistentAgentExecutor(
         config=config,
         model_provider=provider,
@@ -172,9 +180,18 @@ async def example_3_multi_turn_conversation() -> None:
 
     # Simulate multiple conversation turns
     turns = [
-        ("What is algebra?", "Algebra is a branch of mathematics dealing with symbols and rules for manipulating those symbols."),
-        ("Can you give me an example?", "Sure! For example, x + 5 = 10. We can solve for x by subtracting 5 from both sides: x = 5."),
-        ("What about quadratic equations?", "A quadratic equation is of the form ax² + bx + c = 0. We can solve it using the quadratic formula."),
+        (
+            "What is algebra?",
+            "Algebra is a branch of mathematics dealing with symbols and rules for manipulating those symbols.",
+        ),
+        (
+            "Can you give me an example?",
+            "Sure! For example, x + 5 = 10. We can solve for x by subtracting 5 from both sides: x = 5.",
+        ),
+        (
+            "What about quadratic equations?",
+            "A quadratic equation is of the form ax² + bx + c = 0. We can solve it using the quadratic formula.",
+        ),
     ]
 
     print("🎓 Starting math tutoring session...")
@@ -189,7 +206,7 @@ async def example_3_multi_turn_conversation() -> None:
         )
 
         # First turn creates session, rest resume
-        is_first = (i == 0)
+        is_first = i == 0
         result, _ = await executor.execute_with_session(
             agent=agent,
             task=user_input,
@@ -197,7 +214,7 @@ async def example_3_multi_turn_conversation() -> None:
             resume=not is_first,
         )
 
-        print(f"\n{'📚 Turn ' + str(i+1)}")
+        print(f"\n{'📚 Turn ' + str(i + 1)}")
         print(f"💬 Student: {user_input}")
         print(f"🎓 Tutor: {result.final_output}")
 

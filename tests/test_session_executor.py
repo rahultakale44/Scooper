@@ -265,9 +265,7 @@ class TestPersistentAgentExecutor:
             scripted_responses=[
                 ModelResponse(
                     response_type="tool_calls",
-                    tool_calls=[
-                        ToolCall(id="call-1", name="counter", arguments={})
-                    ],
+                    tool_calls=[ToolCall(id="call-1", name="counter", arguments={})],
                     finish_reason="tool_calls",
                 ),
                 ModelResponse(
@@ -558,4 +556,3 @@ class TestPersistenceErrorHandling:
 
         # Execution should still succeed even if persistence fails
         assert result.success is True
-

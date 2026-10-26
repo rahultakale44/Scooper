@@ -316,4 +316,3 @@ class PersistentAgentExecutor(AgentExecutor):
         except Exception as e:
             # Log but don't fail execution on persistence errors
             logger.warning(f"Failed to persist message: {e}")
-
