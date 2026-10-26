@@ -9,13 +9,15 @@ import logging
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
 from scooper.exceptions import SessionError, SessionNotFoundError
 from scooper.models.base import Message, ToolCall
-from scooper.runtime.executor import ExecutionResult
+
+if TYPE_CHECKING:
+    from scooper.runtime.executor import ExecutionResult
 
 logger = logging.getLogger(__name__)
 
@@ -501,7 +503,7 @@ class SessionStore:
         logger.debug(f"Loaded {len(messages)} messages from session {session_id}")
         return messages
 
-    async def save_execution(self, session_id: str, result: ExecutionResult) -> None:
+    async def save_execution(self, session_id: str, result: "ExecutionResult") -> None:
         """Save an execution record to the session.
 
         Args:
