@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from scooper.config import ScooperConfig
 from scooper.exceptions import (
+    ExecutionLimitExceededError,
     RuntimeMaxIterationsError,
     ToolExecutionError,
     ToolNotFoundError,
@@ -249,6 +250,16 @@ class AgentExecutor:
                 error=f"Maximum iterations ({max_iterations}) exceeded",
             )
 
+        except ExecutionLimitExceededError as e:
+            logger.error(f"Execution limit exceeded: {e}")
+            return ExecutionResult(
+                success=False,
+                iterations=iteration_count,
+                stop_reason="tool_limit_exceeded",
+                tool_calls_made=tool_calls_made,
+                error=str(e),
+            )
+
         except Exception as e:
             logger.error(f"Execution failed: {e}")
             return ExecutionResult(
@@ -330,6 +341,10 @@ class AgentExecutor:
                 tool_call_id=tool_call.id,
                 name=tool_call.name,
             )
+
+        except ExecutionLimitExceededError:
+            # Re-raise limit errors to stop execution
+            raise
 
         except Exception as e:
             logger.error(f"Unexpected error executing tool {tool_call.name}: {e}")

@@ -7,7 +7,7 @@ enabling conversations to be saved, loaded, and resumed across program runs.
 import logging
 
 from scooper.config import ScooperConfig
-from scooper.exceptions import SessionError
+from scooper.exceptions import ExecutionLimitExceededError, SessionError
 from scooper.models.base import Message, ModelProvider
 from scooper.persistence.session_store import Session, SessionStore
 from scooper.runtime.agent import Agent
@@ -282,24 +282,34 @@ class PersistentAgentExecutor(AgentExecutor):
                 f"Execution exceeded maximum iterations ({max_iterations})"
             )
 
+        except RuntimeMaxIterationsError:
+            return ExecutionResult(
+                success=False,
+                iterations=iteration_count,
+                stop_reason="max_iterations",
+                tool_calls_made=tool_calls_made,
+                error=f"Maximum iterations ({max_iterations}) exceeded",
+            )
+
+        except ExecutionLimitExceededError as e:
+            logger.error(f"Execution limit exceeded: {e}")
+            return ExecutionResult(
+                success=False,
+                iterations=iteration_count,
+                stop_reason="tool_limit_exceeded",
+                tool_calls_made=tool_calls_made,
+                error=str(e),
+            )
+
         except Exception as e:
-            if isinstance(e, RuntimeError) and "maximum iterations" in str(e).lower():
-                return ExecutionResult(
-                    success=False,
-                    iterations=iteration_count,
-                    stop_reason="max_iterations",
-                    tool_calls_made=tool_calls_made,
-                    error=f"Maximum iterations ({max_iterations}) exceeded",
-                )
-            else:
-                logger.error(f"Execution failed: {e}")
-                return ExecutionResult(
-                    success=False,
-                    iterations=iteration_count,
-                    stop_reason="error",
-                    tool_calls_made=tool_calls_made,
-                    error=str(e),
-                )
+            logger.error(f"Execution failed: {e}")
+            return ExecutionResult(
+                success=False,
+                iterations=iteration_count,
+                stop_reason="error",
+                tool_calls_made=tool_calls_made,
+                error=str(e),
+            )
 
     async def _save_message_if_new(self, session_id: str, message: Message) -> None:
         """Save a message to the session.
