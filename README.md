@@ -34,12 +34,12 @@ Scooper is currently in Phase 2 of development, implementing multi-step agent ex
 - Conversation history and message types
 - **SQLite session persistence** with conversation history and execution records
 - **Resumable agent sessions** with full conversation context across restarts
+- **Tool safety and permissions** with allowlist/denylist, approval workflows, and execution limits
 - Deterministic unit testing infrastructure
 
 ### Planned 🎯
 - Additional model providers (OpenAI, Anthropic, etc.)
 - Advanced planning and multi-step orchestration
-- Human approval workflows
 - Checkpointing and recovery
 - Tracing and evaluation framework
 - Command-line interface (Typer)
@@ -87,6 +87,7 @@ Scooper implements multi-step agent execution with tool integration and supports
 - **Ollama Integration**: [`examples/ollama_local_agent.py`](examples/ollama_local_agent.py) - Using local Ollama models
 - **Persistent Sessions**: [`examples/persistent_session.py`](examples/persistent_session.py) - SQLite session persistence
 - **Resumable Sessions**: [`examples/resumable_sessions.py`](examples/resumable_sessions.py) - Complete resumable conversation workflow
+- **Safe Tool Execution**: [`examples/safe_tool_execution.py`](examples/safe_tool_execution.py) - Permission policies, approval workflows, and execution limits
 
 ### Ollama Agent Example
 
@@ -274,6 +275,214 @@ result2, session = await executor.execute_with_session(
 - **Context building**: Agents build understanding over multiple interactions
 
 See [`examples/resumable_sessions.py`](examples/resumable_sessions.py) for a complete working demonstration.
+
+## Tool Safety & Permissions
+
+Scooper provides **framework-enforced safety controls** for tool execution, ensuring that models never have authority to grant themselves permissions. All safety checks happen in Python before tool execution, not through prompt engineering.
+
+### Safety Principles
+
+- 🔒 **Model is never the authority**: All permission checks enforced in Python
+- 🚫 **Fail closed**: Approval-required tools fail without approval mechanism
+- ⚡ **Pre-execution enforcement**: Checks run before side effects occur
+- 📊 **Execution limits**: Prevent runaway tool usage
+- 🎯 **Explicit policies**: Allowlist/denylist with clear precedence rules
+
+### Permission Levels
+
+Tools can declare their permission requirements:
+
+```python
+from scooper.tools import Tool, ToolPermissionLevel
+
+class ReadTool(Tool):
+    @property
+    def permission_level(self) -> ToolPermissionLevel:
+        return ToolPermissionLevel.ALLOWED  # No approval needed
+
+class DeleteTool(Tool):
+    @property
+    def permission_level(self) -> ToolPermissionLevel:
+        return ToolPermissionLevel.REQUIRES_APPROVAL  # Must be approved
+```
+
+### Permission Policies
+
+Configure allowlists, denylists, and approval workflows:
+
+```python
+from scooper.tools import ToolRegistry, SafeToolRegistry
+from scooper.tools.permissions import ToolPermissionPolicy
+
+# Register tools
+registry = ToolRegistry()
+registry.register(ReadTool())
+registry.register(WriteTool())
+registry.register(DeleteTool())
+
+# Option 1: Allowlist only specific tools
+policy = ToolPermissionPolicy(
+    allowlist={"read_tool", "write_tool"}  # Only these allowed
+)
+
+# Option 2: Deny dangerous tools
+policy = ToolPermissionPolicy(
+    denylist={"delete_tool", "execute_command"}  # Always denied
+)
+
+# Option 3: Combined (denylist overrides allowlist)
+policy = ToolPermissionPolicy(
+    allowlist={"read_tool", "write_tool", "delete_tool"},
+    denylist={"delete_tool"}  # Denied even though on allowlist
+)
+
+# Wrap registry with policy
+safe_registry = SafeToolRegistry(registry, policy=policy)
+```
+
+### Approval Workflows
+
+Require human approval for sensitive operations:
+
+```python
+from scooper.tools.permissions import ApprovalRequest
+
+async def approval_callback(request: ApprovalRequest) -> bool:
+    """Custom approval logic - could show UI, log audit trail, etc."""
+    print(f"Tool: {request.tool_name}")
+    print(f"Arguments: {request.arguments}")
+    print(f"Session: {request.session_id}")
+    
+    # Implement your approval logic
+    if request.tool_name == "delete_tool":
+        return False  # Deny deletes
+    return True  # Approve others
+
+policy = ToolPermissionPolicy(approval_callback=approval_callback)
+safe_registry = SafeToolRegistry(registry, policy=policy)
+
+# Tool requiring approval will trigger callback
+result = await safe_registry.execute("delete_tool", tool_input)
+# Raises ToolApprovalDeniedError if denied
+```
+
+### Execution Limits
+
+Prevent runaway tool usage with per-execution limits:
+
+```python
+# Limit to 5 tool calls per execution
+safe_registry = SafeToolRegistry(
+    registry,
+    max_tool_calls_per_execution=5
+)
+
+# Use with executor
+executor = AgentExecutor(config, model_provider, tool_registry=safe_registry)
+result = await executor.execute(agent, task)
+
+# Execution stops with ExecutionLimitExceededError if limit reached
+# result.stop_reason == "tool_limit_exceeded"
+```
+
+### Policy Semantics
+
+1. **Denylist always takes precedence** over allowlist
+2. **If allowlist configured**, tool must be on it (unless denied)
+3. **No allowlist** = allow all (unless denied)
+4. **Approval required** = fails closed without approval handler
+5. **Enforcement order**: limits → lookup → permission → approval → execution
+
+### Error Handling
+
+All permission errors can be caught and handled:
+
+```python
+from scooper.exceptions import (
+    ToolPermissionDeniedError,     # Policy denied tool
+    ToolApprovalRequiredError,     # Needs approval but no handler
+    ToolApprovalDeniedError,       # Approval explicitly denied
+    ExecutionLimitExceededError,   # Hit call limit
+)
+
+try:
+    result = await safe_registry.execute("risky_tool", tool_input)
+except ToolPermissionDeniedError as e:
+    print(f"Blocked by policy: {e}")
+except ToolApprovalDeniedError as e:
+    print(f"User denied approval: {e}")
+except ExecutionLimitExceededError as e:
+    print(f"Hit execution limit: {e}")
+```
+
+### Integration with Agent Runtime
+
+Use safe registries with both executors:
+
+```python
+# With standard executor
+executor = AgentExecutor(
+    config=config,
+    model_provider=provider,
+    tool_registry=safe_registry  # Use safe registry
+)
+
+# With persistent executor (resumable sessions)
+executor = PersistentAgentExecutor(
+    config=config,
+    model_provider=provider,
+    tool_registry=safe_registry,
+    session_store=store,
+)
+
+result = await executor.execute(agent, task)
+# All tool calls enforced by policy
+```
+
+### Security Best Practices
+
+1. **Always use policies**: Don't rely on models to respect boundaries
+2. **Deny by default**: Use allowlists for sensitive environments
+3. **Require approval**: Mark destructive operations as REQUIRES_APPROVAL
+4. **Set execution limits**: Prevent infinite tool call loops
+5. **Log approval requests**: Maintain audit trails for compliance
+6. **Validate arguments**: Don't log sensitive data in approval callbacks
+7. **Test policies**: Verify denials work as expected
+
+### Example: Production-Safe Configuration
+
+```python
+# Comprehensive safety configuration
+policy = ToolPermissionPolicy(
+    # Only allow necessary tools
+    allowlist={"read_file", "search_docs", "calculate"},
+    
+    # Explicitly deny dangerous operations
+    denylist={"execute_command", "delete_file", "write_system"},
+    
+    # Require approval for writes
+    approval_callback=audit_and_approve_callback,
+)
+
+safe_registry = SafeToolRegistry(
+    registry,
+    policy=policy,
+    max_tool_calls_per_execution=10,  # Reasonable limit
+    session_id=user_session_id,  # For approval context
+)
+
+executor = AgentExecutor(config, provider, safe_registry)
+```
+
+### Complete Example
+
+See [`examples/safe_tool_execution.py`](examples/safe_tool_execution.py) for a working demonstration of:
+- Allowlist and denylist enforcement
+- Approval workflows with callbacks
+- Execution limits
+- Combined policies
+- Error handling
+- Integration with executors
 
 ## Session Persistence
 
