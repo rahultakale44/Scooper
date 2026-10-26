@@ -5,9 +5,12 @@ including input validation, execution contracts, and result handling.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from scooper.tools.permissions import ToolPermissionLevel
 
 
 class ToolInput(BaseModel):
@@ -85,6 +88,17 @@ class Tool(ABC):
     def description(self) -> str:
         """Human-readable description of what this tool does."""
         pass
+
+    @property
+    def permission_level(self) -> "ToolPermissionLevel":
+        """Permission level required for this tool.
+
+        Returns:
+            ToolPermissionLevel.ALLOWED by default
+        """
+        from scooper.tools.permissions import ToolPermissionLevel
+
+        return ToolPermissionLevel.ALLOWED
 
     @abstractmethod
     async def execute(self, tool_input: ToolInput) -> ToolResult:

@@ -87,3 +87,33 @@ class SessionNotFoundError(SessionError):
     """Raised when a requested session is not found."""
 
     pass
+
+
+class ToolPermissionError(ToolError):
+    """Base exception for tool permission-related errors."""
+
+    pass
+
+
+class ToolPermissionDeniedError(ToolPermissionError):
+    """Raised when a tool execution is denied by permission policy."""
+
+    pass
+
+
+class ToolApprovalRequiredError(ToolPermissionError):
+    """Raised when a tool requires approval but no approval handler is configured."""
+
+    pass
+
+
+class ToolApprovalDeniedError(ToolPermissionError):
+    """Raised when tool approval is explicitly denied."""
+
+    pass
+
+
+class ExecutionLimitExceededError(RuntimeError):
+    """Raised when an execution limit is exceeded."""
+
+    pass
