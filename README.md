@@ -278,15 +278,18 @@ See [`examples/resumable_sessions.py`](examples/resumable_sessions.py) for a com
 
 ## Tool Safety & Permissions
 
-Scooper provides **framework-enforced safety controls** for tool execution, ensuring that models never have authority to grant themselves permissions. All safety checks happen in Python before tool execution, not through prompt engineering.
+Scooper provides **opt-in safety controls** for tool execution. When using `SafeToolRegistry`, permission checks are enforced in Python before tool execution, ensuring models cannot grant themselves permissions.
+
+**IMPORTANT SECURITY NOTE**: Safety controls are **opt-in**, not automatic. Using the standard `ToolRegistry` provides **NO** permission enforcement, approval workflows, or execution limits. For production systems with untrusted models or sensitive tools, you **MUST** use `SafeToolRegistry`.
 
 ### Safety Principles
 
-- 🔒 **Model is never the authority**: All permission checks enforced in Python
+- 🔒 **Model is never the authority**: When using SafeToolRegistry, all permission checks are enforced in Python
 - 🚫 **Fail closed**: Approval-required tools fail without approval mechanism
-- ⚡ **Pre-execution enforcement**: Checks run before side effects occur
-- 📊 **Execution limits**: Prevent runaway tool usage
+- ⚡ **Pre-execution enforcement**: Checks run before side effects occur (with SafeToolRegistry)
+- 📊 **Execution limits**: Prevent runaway tool usage (with SafeToolRegistry)
 - 🎯 **Explicit policies**: Allowlist/denylist with clear precedence rules
+- ⚠️ **Opt-in by design**: Regular `ToolRegistry` has NO safety controls - use `SafeToolRegistry`
 
 ### Permission Levels
 
@@ -417,7 +420,25 @@ except ExecutionLimitExceededError as e:
 
 ### Integration with Agent Runtime
 
-Use safe registries with both executors:
+**CRITICAL**: SafeToolRegistry must be explicitly used. The executors accept any ToolRegistry:
+
+```python
+# ⚠️ UNSAFE: Regular registry has NO safety controls
+unsafe_registry = ToolRegistry()
+unsafe_registry.register(DangerousTool())
+executor = AgentExecutor(config, provider, tool_registry=unsafe_registry)
+# Tool executes WITHOUT permission checks, approval, or limits!
+
+# ✅ SAFE: Use SafeToolRegistry with policy
+registry = ToolRegistry()
+registry.register(DangerousTool())
+policy = ToolPermissionPolicy(denylist={"dangerous_tool"})
+safe_registry = SafeToolRegistry(registry, policy=policy)
+executor = AgentExecutor(config, provider, tool_registry=safe_registry)
+# Tool execution is now controlled by policy
+```
+
+SafeToolRegistry works with both executors:
 
 ```python
 # With standard executor
@@ -439,15 +460,40 @@ result = await executor.execute(agent, task)
 # All tool calls enforced by policy
 ```
 
+**Counter Reset**: When reusing a SafeToolRegistry across multiple executions:
+
+```python
+safe_registry = SafeToolRegistry(registry, max_tool_calls_per_execution=5)
+
+# First execution
+result1 = await executor1.execute(agent, task1)
+
+# Reset counter before second execution
+safe_registry.reset_call_count()
+
+# Second execution with fresh limit
+result2 = await executor2.execute(agent, task2)
+```
+
 ### Security Best Practices
 
-1. **Always use policies**: Don't rely on models to respect boundaries
+1. **Always use SafeToolRegistry in production**: Don't rely on models to respect boundaries
 2. **Deny by default**: Use allowlists for sensitive environments
 3. **Require approval**: Mark destructive operations as REQUIRES_APPROVAL
 4. **Set execution limits**: Prevent infinite tool call loops
-5. **Log approval requests**: Maintain audit trails for compliance
-6. **Validate arguments**: Don't log sensitive data in approval callbacks
-7. **Test policies**: Verify denials work as expected
+5. **Reset counters**: Call `reset_call_count()` between independent executions
+6. **Log approval requests**: Maintain audit trails for compliance
+7. **Validate arguments**: Don't log sensitive data in approval callbacks
+8. **Test policies**: Verify denials work as expected
+9. **Never use ToolRegistry directly in production**: It provides NO safety controls
+
+### Security Limitations
+
+- **Safety is opt-in**: Developers must explicitly use SafeToolRegistry
+- **No automatic enforcement**: AgentExecutor accepts regular ToolRegistry
+- **Counter persistence**: Tool call counters persist across executions
+- **Type system doesn't prevent bypass**: Python's type system allows any registry
+- **Documentation critical**: Developers must understand the security model
 
 ### Example: Production-Safe Configuration
 
