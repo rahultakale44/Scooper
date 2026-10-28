@@ -28,6 +28,14 @@ class SafeToolRegistry:
 
     The model never has authority to grant itself permissions.
     All checks are enforced in Python before tool functions execute.
+
+    **IMPORTANT**: The tool call counter (_tool_calls_made) persists across
+    executions when reusing the same SafeToolRegistry instance. Call
+    reset_call_count() before starting a new independent execution to ensure
+    limits are enforced correctly.
+
+    For session resumption, consider creating a new SafeToolRegistry instance
+    or explicitly resetting the counter.
     """
 
     def __init__(
@@ -42,7 +50,9 @@ class SafeToolRegistry:
         Args:
             registry: Underlying tool registry
             policy: Optional permission policy
-            max_tool_calls_per_execution: Maximum tool calls allowed per execution
+            max_tool_calls_per_execution: Maximum tool calls allowed per execution.
+                **IMPORTANT**: This limit persists across multiple execute() calls.
+                Call reset_call_count() between independent executions.
             session_id: Optional session identifier for approval context
         """
         self._registry = registry

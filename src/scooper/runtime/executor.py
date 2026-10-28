@@ -82,6 +82,19 @@ class AgentExecutor:
     between the agent, model provider, and tool registry. It enforces iteration
     limits and handles tool execution with proper error handling.
 
+    **SECURITY WARNING**: This executor accepts ANY ToolRegistry instance,
+    including the basic ToolRegistry which provides NO permission enforcement,
+    approval workflows, or execution limits. For production use with untrusted
+    models or sensitive tools:
+
+    1. Use SafeToolRegistry instead of ToolRegistry
+    2. Configure appropriate ToolPermissionPolicy with allowlist/denylist
+    3. Provide approval callbacks for sensitive operations
+    4. Set max_tool_calls_per_execution limits
+    5. Reset SafeToolRegistry.reset_call_count() between independent executions
+
+    See: scooper.tools.SafeToolRegistry and examples/safe_tool_execution.py
+
     Attributes:
         config: Global Scooper configuration
         model_provider: Model provider for generating responses
@@ -99,7 +112,10 @@ class AgentExecutor:
         Args:
             config: Global Scooper configuration
             model_provider: Model provider for generation
-            tool_registry: Optional tool registry for tool execution
+            tool_registry: Optional tool registry for tool execution.
+                **SECURITY**: Use SafeToolRegistry for production to enforce
+                permission policies, approval workflows, and execution limits.
+                A regular ToolRegistry provides NO safety controls.
         """
         self.config = config
         self.model_provider = model_provider

@@ -30,6 +30,10 @@ class PersistentAgentExecutor(AgentExecutor):
     The executor maintains backward compatibility: it can be used without
     a session_store, in which case it behaves exactly like AgentExecutor.
 
+    **SECURITY WARNING**: Like AgentExecutor, this class accepts ANY ToolRegistry.
+    For production use, wrap tools in SafeToolRegistry with appropriate policies.
+    See AgentExecutor docstring for security considerations.
+
     Attributes:
         config: Global Scooper configuration
         model_provider: Model provider for generating responses
@@ -49,7 +53,9 @@ class PersistentAgentExecutor(AgentExecutor):
         Args:
             config: Global Scooper configuration
             model_provider: Model provider for generation
-            tool_registry: Optional tool registry for tool execution
+            tool_registry: Optional tool registry for tool execution.
+                **SECURITY**: Use SafeToolRegistry for production to enforce
+                permission policies and limits.
             session_store: Optional session store for persistence
         """
         super().__init__(config, model_provider, tool_registry)
